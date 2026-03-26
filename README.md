@@ -1,0 +1,287 @@
+# ESPN Fantasy API Documentation
+
+**Disclaimer:** This is documentation for ESPN's undocumented internal Fantasy API. I am not affiliated with ESPN. Use responsibly and follow ESPN's terms of service.
+
+---
+
+## ☕ Support This Project
+
+If this documentation has saved you time, consider supporting ongoing development and maintenance:
+
+| Platform | Link |
+|----------|------|
+| ☕ Buy Me a Coffee | [buymeacoffee.com/pseudo_r](https://buymeacoffee.com/pseudo_r) |
+| 💖 GitHub Sponsors | [github.com/sponsors/Kloverdevs](https://github.com/sponsors/Kloverdevs) |
+| 💳 PayPal Donate | [PayPal (CAD)](https://www.paypal.com/donate/?business=H5VPFZ2EHVNBU&no_recurring=0&currency_code=CAD) |
+
+Every contribution helps keep this project updated as ESPN changes their API.
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Base URLs](#base-urls)
+- [Quick Start](#quick-start)
+- [Authentication](#authentication)
+- [Game Codes](#game-codes)
+- [Segments](#segments)
+- [Endpoint Catalog](#endpoint-catalog)
+  - [League Endpoints](#league-endpoints)
+  - [View Parameters](#view-parameters)
+  - [Free Agent / Player Endpoints](#free-agent--player-endpoints)
+  - [Game & Season Metadata](#game--season-metadata)
+- [Query Parameters Reference](#query-parameters-reference)
+- [Response Schemas](docs/response_schemas.md)
+- [Authentication Guide](docs/authentication.md)
+- [Endpoint Details](docs/leagues.md)
+- [Draft Endpoints](docs/draft.md)
+- [Transactions & Waivers](docs/transactions.md)
+- [Players & Projections](docs/players.md)
+- [Matchups & Scoring](docs/matchups.md)
+- [Settings Reference](docs/settings.md)
+
+---
+
+## Overview
+
+ESPN operates an undocumented internal API that powers `fantasy.espn.com` and the ESPN Fantasy mobile apps across all four fantasy sports.
+
+**Verified base domain:** `https://fantasy.espn.com`  
+**Also observed:** `https://lm-api-reads.fantasy.espn.com` (internal read API; same interface, browser-accessible)
+
+**All endpoints are REST-style GET requests returning JSON. No official SDK or documentation exists.**
+
+### Important Notes
+
+- **Unofficial:** Not publicly documented; may change without notice
+- **Public vs. Private:** Leagues set as "publicly viewable" in their settings return data without authentication. Private leagues require cookies.
+- **No Rate Limiting Published:** No official limits. Implement caching and exponential backoff.
+- **Season-scoped:** All league data is scoped to a specific season year. You must know the `seasonId`.
+
+---
+
+## Base URLs
+
+| Domain | Purpose |
+|--------|---------|
+| `https://fantasy.espn.com` | Primary public-facing API domain |
+| `https://lm-api-reads.fantasy.espn.com` | Internal read-optimized API (same endpoints, same schema) |
+
+All documented endpoints below use `https://fantasy.espn.com` as the root.
+
+---
+
+## Quick Start
+
+```bash
+# Fantasy Baseball — public league settings (league 101, season 2025)
+curl "https://fantasy.espn.com/apis/v3/games/flb/seasons/2025/segments/0/leagues/101?view=mSettings"
+
+# Fantasy Baseball — public league teams
+curl "https://fantasy.espn.com/apis/v3/games/flb/seasons/2025/segments/0/leagues/101?view=mTeam"
+
+# Fantasy Baseball — draft detail
+curl "https://fantasy.espn.com/apis/v3/games/flb/seasons/2025/segments/0/leagues/101?view=mDraftDetail"
+
+# Game metadata — all sports
+curl "https://fantasy.espn.com/apis/v3/games/ffl"
+curl "https://fantasy.espn.com/apis/v3/games/fba"
+curl "https://fantasy.espn.com/apis/v3/games/flb"
+curl "https://fantasy.espn.com/apis/v3/games/fhl"
+```
+
+---
+
+## Authentication
+
+See [docs/authentication.md](docs/authentication.md) for full details.
+
+**Private leagues** require two cookies sent with every request:
+
+| Cookie | Description |
+|--------|-------------|
+| `espn_s2` | Long-lived session token (alphanumeric, 200+ chars) |
+| `SWID` | ESPN user ID in curly-brace format, e.g. `{A3EBBDAE-5F79-46FF-86EF-7356ABA27F8E}` |
+
+**Finding your cookies:**
+1. Log in to `fantasy.espn.com`
+2. Open DevTools → Application → Cookies → `fantasy.espn.com`
+3. Copy the value of `espn_s2` and `SWID`
+
+**Example (curl):**
+```bash
+curl "https://fantasy.espn.com/apis/v3/games/ffl/seasons/2025/segments/0/leagues/{leagueId}?view=mSettings" \
+  --cookie "espn_s2=YOUR_ESPN_S2; SWID=YOUR_SWID"
+```
+
+**Public league error for missing auth:**
+```json
+{
+  "messages": ["You are not authorized to view this League."],
+  "details": [{
+    "message": "You are not authorized to view this League.",
+    "shortMessage": "You are not authorized to view this League.",
+    "type": "AUTH_LEAGUE_NOT_VISIBLE"
+  }]
+}
+```
+
+---
+
+## Game Codes
+
+ESPN Fantasy uses sport-specific game codes in all endpoints:
+
+| Sport | Code | `proSportName` | Active |
+|-------|------|----------------|--------|
+| Fantasy Football | `ffl` | `football` | ✅ |
+| Fantasy Basketball | `fba` | `basketball` | ✅ |
+| Fantasy Baseball | `flb` | `baseball` | ✅ |
+| Fantasy Hockey | `fhl` | `hockey` | ✅ |
+
+**Current season IDs (as of March 2026):**
+
+| Game | `currentSeasonId` |
+|------|-------------------|
+| FFL | `2026` |
+| FBA | `2026` |
+| FLB | `2026` |
+| FHL | `2026` |
+
+---
+
+## Segments
+
+All league endpoints include a `segments/{segmentId}` path component. Segment `0` represents the full regular season and is used for all standard queries.
+
+| Segment | Description |
+|---------|-------------|
+| `0` | Full season (use for all standard requests) |
+| `1` | Playoff round 1 (sport-dependent) |
+| `2` | Playoff round 2 (sport-dependent) |
+| `3` | Championship round (sport-dependent) |
+
+> In practice, nearly all integrations use `segments/0`.
+
+---
+
+## Endpoint Catalog
+
+### League Endpoints
+
+```
+GET https://fantasy.espn.com/apis/v3/games/{gameCode}/seasons/{seasonId}/segments/0/leagues/{leagueId}
+```
+
+**Path parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `gameCode` | string | `ffl`, `fba`, `flb`, or `fhl` |
+| `seasonId` | integer | Season year, e.g. `2025` |
+| `leagueId` | integer | Your league ID (visible in the URL on fantasy.espn.com) |
+
+All data is provided via the `view` query parameter. Multiple views can be requested in a single call by repeating the param:  
+`?view=mTeam&view=mRoster`
+
+---
+
+### View Parameters
+
+| View | Description | Key Response Fields |
+|------|-------------|---------------------|
+| `mSettings` | League configuration, scoring rules, roster slots, draft settings | `settings` |
+| `mTeam` | All teams with names, abbreviations, owners, records | `teams`, `members` |
+| `mRoster` | All team rosters with player entries and lineup slots | `teams[].roster.entries` |
+| `mMatchupScore` | Schedule and scores for a given matchup period | `schedule` |
+| `mScoreboard` | Scoreboard and current scoring period | `scoringPeriodId`, `schedule` |
+| `mStandings` | Current standings (typically embedded in `schedule`) | `schedule` |
+| `mDraftDetail` | Full draft history (picks, player IDs, team IDs, order) | `draftDetail` |
+| `mTransactions2` | All transactions: waivers, trades, free agent adds | `transactions` |
+| `mStatus` | High-level league status (drafted, in playoffs, etc.) | `status` |
+| `kona_player_info` | Player pool data: stats, ownership, projections, health | `players` |
+| `mBoxscore` | Per-player scoring breakdown for a matchup | `schedule[].home/away` |
+| `proTeamSchedules_wl` | NFL/NBA/MLB/NHL pro team schedule (used for bye weeks) | `proTeamSchedules` |
+| `mSchedule` | Full season schedule (all matchup periods) | `schedule` |
+
+**Combined views example:**
+```bash
+# Get teams + rosters in one request (FFL, scoring period 1)
+curl "https://fantasy.espn.com/apis/v3/games/ffl/seasons/2025/segments/0/leagues/{leagueId}?view=mTeam&view=mRoster&scoringPeriodId=1"
+```
+
+---
+
+### Free Agent / Player Endpoints
+
+Player pool data comes from `kona_player_info`. To filter for free agents or waivers, pass a JSON filter in the `X-Fantasy-Filter` request header:
+
+```bash
+curl "https://fantasy.espn.com/apis/v3/games/ffl/seasons/2025/segments/0/leagues/{leagueId}?view=kona_player_info&scoringPeriodId=1" \
+  -H 'X-Fantasy-Filter: {"players":{"filterStatus":{"value":["FREEAGENT","WAIVERS"]},"filterSlotIds":{"value":[0,2,4,6,17,16]},"limit":50,"sortPercOwned":{"sortPriority":1,"sortAsc":false}}}'
+```
+
+**Common `filterStatus` values:**
+
+| Value | Description |
+|-------|-------------|
+| `FREEAGENT` | Available free agents |
+| `WAIVERS` | On waivers |
+| `ONTEAM` | Rostered by a team |
+| `FREEAGENT,WAIVERS` | Combined free agent + waiver pool |
+
+---
+
+### Game & Season Metadata
+
+These endpoints do not require a league ID and are always public:
+
+```bash
+# Game info (all fantasy sports)
+GET https://fantasy.espn.com/apis/v3/games/{gameCode}
+
+# Season info
+GET https://fantasy.espn.com/apis/v3/games/{gameCode}/seasons/{seasonId}
+```
+
+**Game info response (`/apis/v3/games/ffl`):**
+```json
+{
+  "abbrev": "FFL",
+  "active": true,
+  "currentSeasonId": 2026,
+  "name": "Fantasy Football",
+  "proSportName": "football"
+}
+```
+
+**Season info response (`/apis/v3/games/flb/seasons/2025`):**
+```json
+{
+  "abbrev": "FLB 2025",
+  "active": true,
+  "startDate": 1711350000000,
+  "endDate": ...,
+  "currentScoringPeriod": {
+    "id": 196
+  }
+}
+```
+
+---
+
+## Query Parameters Reference
+
+| Parameter | Type | Description | Example |
+|-----------|------|-------------|---------|
+| `view` | string | Data section to return (repeat for multiple) | `?view=mTeam&view=mRoster` |
+| `scoringPeriodId` | integer | Week (football) or day (baseball/basketball/hockey) | `?scoringPeriodId=1` |
+| `matchupPeriodId` | integer | The matchup number in the league schedule | `?matchupPeriodId=1` |
+| `seasonId` | integer | Override season year (usually set in path) | `?seasonId=2024` |
+
+> **Note:** `scoringPeriodId` and `matchupPeriodId` are generally required when fetching `mRoster`, `mMatchupScore`, `mTransactions2`, or `mBoxscore`.
+
+---
+
+*Last Updated: March 2026 · 4 sports · 4 game codes · Verified via live API inspection*
