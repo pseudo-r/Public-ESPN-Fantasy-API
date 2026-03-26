@@ -328,6 +328,8 @@ GET https://lm-api-reads.fantasy.espn.com/apis/v3/games/{gameCode}/seasons/{seas
 
 ESPN operates several distinct API domains beyond the main Fantasy API. This section catalogs every discovered domain, explains what each one is used for, its access level, and how it connects to the Fantasy API.
 
+> All domains below were **live-verified via browser HTTP tests on 2026-03-26**. All returned HTTP 200 OK with valid JSON.
+
 ---
 
 ### 1. `lm-api-reads.fantasy.espn.com` — ✅ PRIMARY (Fantasy Read API)
@@ -335,6 +337,13 @@ ESPN operates several distinct API domains beyond the main Fantasy API. This sec
 **What it is:** The main internal read API for all ESPN Fantasy sports data. This is the domain documented throughout this repository.
 
 **Access:** Public (no auth for public leagues) / Cookies required for private leagues and historical data.
+
+**Live-verified response keys (game metadata):** `abbrev`, `active`, `currentSeason`, `currentSeasonId`, `name`, `proSportName`
+
+**Current season IDs (verified 2026-03-26):**
+```json
+{ "abbrev": "FFL", "active": true, "currentSeasonId": 2026, "name": "Fantasy Football", "proSportName": "football" }
+```
 
 **Example endpoints:**
 ```
@@ -372,6 +381,14 @@ POST https://lm-api-writes.fantasy.espn.com/apis/v3/games/ffl/seasons/2025/segme
 
 **Access:** Public (no authentication required)
 
+**Live-verified response keys (leagues list):** `$ref`, `id`, `name`, `season`, `teams`, `athletes`, `links`, `logos`
+**Live-verified response keys (paginated collections):** `count`, `pageIndex`, `pageSize`, `pageCount`, `items[]`
+
+**Example response (`/v2/sports/football/leagues/nfl`):**
+```json
+{ "$ref": "...", "id": "28", "name": "National Football League", "teams": { "$ref": "..." }, "athletes": { "$ref": "..." } }
+```
+
 **Example endpoints:**
 ```
 GET https://sports.core.api.espn.com/v2/sports/football/leagues/nfl
@@ -389,6 +406,10 @@ GET https://sports.core.api.espn.com/v2/sports/baseball/leagues/mlb/seasons/2025
 **What it is:** The ESPN website's primary data API — powers scoreboards, news feeds, league standings, game summaries, and box scores across all ESPN sports.
 
 **Access:** Public (no authentication required)
+
+**Live-verified response keys (scoreboard):** `leagues`, `season`, `week`, `events`, `provider`
+**Live-verified response keys (news):** `header`, `link`, `articles`
+**Live-verified response keys (standings):** `uid`, `id`, `name`, `abbreviation`, `children`
 
 **Example endpoints:**
 ```
@@ -409,6 +430,8 @@ GET https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard?dates=
 
 **Access:** Public (no authentication required)
 
+**Live-verified response keys (scoreboard):** `leagues`, `season`, `day`, `events`, `provider` (same structure as `site.api.espn.com`)
+
 **Example endpoints:**
 ```
 GET https://site.web.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event={gameId}&region=us&lang=en
@@ -419,15 +442,18 @@ GET https://site.web.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard
 
 ---
 
-### 6. `now.core.api.espn.com` — ⚠️ LIVE / REAL-TIME DATA
+### 6. `now.core.api.espn.com` — ✅ LIVE / REAL-TIME DATA
 
 **What it is:** ESPN's live and near-real-time data stream API. Used for polling active game state and in-progress score updates.
 
-**Access:** Public (unverified — may require browser-like headers)
+**Access:** Public (no authentication required) — **verified 2026-03-26**
 
-**Example endpoints (observed):**
+**Live-verified response keys:** `resultsCount`, `resultsLimit`, `resultsOffset`, `headlines[]`
+
+**Example endpoints:**
 ```
 GET https://now.core.api.espn.com/v1/sports/news
+GET https://now.core.api.espn.com/v1/sports/news?sport=football
 GET https://now.core.api.espn.com/v1/sports/football/nfl/live
 ```
 
