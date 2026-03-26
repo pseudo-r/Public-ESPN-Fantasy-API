@@ -1,0 +1,1 @@
+"""Fantasy app package."""
