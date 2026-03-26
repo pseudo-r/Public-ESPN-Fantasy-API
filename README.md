@@ -324,6 +324,151 @@ GET https://lm-api-reads.fantasy.espn.com/apis/v3/games/{gameCode}/seasons/{seas
 
 ---
 
+## Additional Domains / Related Endpoint Families
+
+ESPN operates several distinct API domains beyond the main Fantasy API. This section catalogs every discovered domain, explains what each one is used for, its access level, and how it connects to the Fantasy API.
+
+---
+
+### 1. `lm-api-reads.fantasy.espn.com` — ✅ PRIMARY (Fantasy Read API)
+
+**What it is:** The main internal read API for all ESPN Fantasy sports data. This is the domain documented throughout this repository.
+
+**Access:** Public (no auth for public leagues) / Cookies required for private leagues and historical data.
+
+**Example endpoints:**
+```
+GET https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2025/segments/0/leagues/{leagueId}?view=mSettings
+GET https://lm-api-reads.fantasy.espn.com/apis/v3/games/flb/seasons/2025/players?view=players_wl
+GET https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl
+```
+
+**Relationship:** This IS the main Fantasy API. All documented views, game codes, and endpoints in this repository use this domain.
+
+---
+
+### 2. `lm-api-writes.fantasy.espn.com` — ⚠️ WRITE API (Discovered, Not Documented)
+
+**What it is:** The write/mutation counterpart — handles waiver claims, trade proposals, lineup changes, and other state-modifying fantasy operations. Observed in browser network traffic when performing actions on `fantasy.espn.com`.
+
+**Access:** Private — requires authenticated cookies (`espn_s2` + `SWID`). All write operations require an active session.
+
+**Example endpoints (observed, not verified):**
+```
+POST https://lm-api-writes.fantasy.espn.com/apis/v3/games/ffl/seasons/2025/segments/0/leagues/{leagueId}/transactions/
+POST https://lm-api-writes.fantasy.espn.com/apis/v3/games/ffl/seasons/2025/segments/0/leagues/{leagueId}/roster/
+```
+
+**Relationship:** The write-side partner of `lm-api-reads`. Together they form the full Fantasy League Manager (LM) API. This repository does **not** document the write API.
+
+> [!CAUTION]
+> Do not automate lineup changes, trades, or waiver claims at scale. ESPN may ban accounts engaging in automated write operations.
+
+---
+
+### 3. `sports.core.api.espn.com` — ✅ PRO SPORTS CORE DATA
+
+**What it is:** ESPN's canonical sports reference API. Returns professional sports entity data — leagues, teams, athletes, venues, events, and season structures across all major sports.
+
+**Access:** Public (no authentication required)
+
+**Example endpoints:**
+```
+GET https://sports.core.api.espn.com/v2/sports/football/leagues/nfl
+GET https://sports.core.api.espn.com/v2/sports/football/leagues/nfl/athletes
+GET https://sports.core.api.espn.com/v2/sports/football/leagues/nfl/seasons/2025/athletes/{athleteId}
+GET https://sports.core.api.espn.com/v2/sports/baseball/leagues/mlb/seasons/2025/teams
+```
+
+**Relationship to Fantasy API:** The Fantasy API references pro team IDs (`proTeamId`) and player IDs (`playerId`) that map to this domain. Use it to resolve player headshots, biographical data, career stats, and pro schedule information not returned by the Fantasy API.
+
+---
+
+### 4. `site.api.espn.com` — ✅ ESPN SITE DATA (Scoreboards, News, Standings)
+
+**What it is:** The ESPN website's primary data API — powers scoreboards, news feeds, league standings, game summaries, and box scores across all ESPN sports.
+
+**Access:** Public (no authentication required)
+
+**Example endpoints:**
+```
+GET https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard
+GET https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/news
+GET https://site.api.espn.com/apis/site/v2/sports/basketball/nba/standings
+GET https://site.api.espn.com/apis/v2/sports/hockey/nhl/standings
+GET https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard?dates=20250401
+```
+
+**Relationship to Fantasy API:** Provides real-world game data that drives fantasy scoring. Use this domain to check whether an NFL game is currently live (to decide whether to poll `mLiveScoring`), or to get injury news not yet reflected in the Fantasy API's `injuryStatus` field.
+
+---
+
+### 5. `site.web.api.espn.com` — ✅ ESPN WEB APP API
+
+**What it is:** A web-app-facing variant of the ESPN site API with enriched, pre-aggregated data for ESPN's web UI — often includes full game summaries and play-by-play context.
+
+**Access:** Public (no authentication required)
+
+**Example endpoints:**
+```
+GET https://site.web.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event={gameId}&region=us&lang=en
+GET https://site.web.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard
+```
+
+**Relationship to Fantasy API:** Provides richer game summaries and play-by-play data supplementing fantasy boxscore data. Where the Fantasy API tells you a player scored 24.5 points, this domain gives you the underlying stat lines.
+
+---
+
+### 6. `now.core.api.espn.com` — ⚠️ LIVE / REAL-TIME DATA
+
+**What it is:** ESPN's live and near-real-time data stream API. Used for polling active game state and in-progress score updates.
+
+**Access:** Public (unverified — may require browser-like headers)
+
+**Example endpoints (observed):**
+```
+GET https://now.core.api.espn.com/v1/sports/news
+GET https://now.core.api.espn.com/v1/sports/football/nfl/live
+```
+
+**Relationship to Fantasy API:** Real-time companion to the Fantasy API's `mLiveScoring` view. During active scoring periods, `mLiveScoring` on `lm-api-reads` ultimately reflects data sourced from ESPN's live infrastructure, which this domain exposes more directly.
+
+---
+
+### 7. `a.espncdn.com` / `cdn.espn.com` — ✅ CDN / CACHED ASSETS
+
+**What it is:** ESPN's content delivery network for static and semi-static cached data — player headshots, team logos, and pre-rendered media assets.
+
+**Access:** Public (no authentication required)
+
+**Example asset URLs:**
+```
+https://a.espncdn.com/i/headshots/nfl/players/full/{playerId}.png
+https://a.espncdn.com/combiner/i?img=/i/teamlogos/nfl/500/{teamAbbrev}.png
+```
+
+**Relationship to Fantasy API:** The Fantasy API returns `playerId` and `proTeamId` integers. Construct headshot and logo URLs against the CDN to display player images in a UI built on top of the Fantasy API:
+```python
+headshot = f"https://a.espncdn.com/i/headshots/nfl/players/full/{player_id}.png"
+logo     = f"https://a.espncdn.com/combiner/i?img=/i/teamlogos/nfl/500/{team_abbrev}.png"
+```
+
+---
+
+### Domain Summary Table
+
+| Domain | Purpose | Auth Required | Fantasy Relevance |
+|--------|---------|---------------|-------------------|
+| `lm-api-reads.fantasy.espn.com` | Fantasy league data (read) | Cookies for private leagues | ⭐ Primary — all docs here |
+| `lm-api-writes.fantasy.espn.com` | Fantasy league mutations (write) | Always required | Write ops (not documented) |
+| `sports.core.api.espn.com` | Pro sports reference data | None | Player/team ID resolution |
+| `site.api.espn.com` | Scoreboards, news, standings | None | Injury & score context |
+| `site.web.api.espn.com` | Web-app game summaries, play-by-play | None | Stat line supplementation |
+| `now.core.api.espn.com` | Real-time live game data | None (unverified) | Live scoring support |
+| `a.espncdn.com` | Static assets (headshots, logos) | None | UI image assets |
+
+---
+
 ## Query Parameters Reference
 
 | Parameter | Type | Description | Example |
@@ -337,4 +482,4 @@ GET https://lm-api-reads.fantasy.espn.com/apis/v3/games/{gameCode}/seasons/{seas
 
 ---
 
-*Last Updated: March 2026 · 4 sports · 4 game codes · 19 views documented · API version tested live (v1 dead, v2 dead, v3 on lm-api-reads ✅) · Verified via live browser HTTP tests + espn-api source analysis*
+*Last Updated: March 2026 · 4 sports · 4 game codes · 19 views documented · 7 ESPN domains catalogued · API version tested live (v1 dead, v2 dead, v3 on lm-api-reads ✅) · Verified via live browser HTTP tests + espn-api source analysis*
