@@ -653,3 +653,114 @@ GET https://lm-api-reads.fantasy.espn.com/apis/v3/games/{gameCode}/news/players?
 ```
 
 **Response:** Array of news items for the player (injury updates, news blurbs, beat reporter notes).
+
+---
+
+## View: `mLiveScoring` — VERIFIED
+
+Returns real-time live scoring updates during an active week. When combined with `mBoxscore` and `mScoreboard`, it returns each team's active roster, current total projected points, and live points per player — with two stat objects per roster entry: original projections and live actuals.
+
+**Request:**
+```bash
+GET https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2025/segments/0/leagues/{leagueId}?view=mLiveScoring&scoringPeriodId={currentPeriod}
+```
+
+**Best used with:**
+```bash
+?view=mBoxscore&view=mLiveScoring&view=mScoreboard&scoringPeriodId={currentPeriod}
+```
+
+**Key response fields (within `schedule[].home` / `schedule[].away`):**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `totalPoints` | float | Current live total |
+| `totalProjectedPointsLive` | float | Projected final total |
+| `rosterForCurrentScoringPeriod.entries[]` | array | Per-player entries with 2 stat objects each |
+| `entries[].playerPoolEntry.appliedStatTotal` | float | Live points from this player |
+
+> **Note:** `mLiveScoring` data is only meaningful during an active scoring period. Outside of game days it returns the same data as `mMatchupScore`.
+
+---
+
+## View: `mSchedule` — VERIFIED
+
+Returns the full season schedule for all teams in the league. Each entry in the `schedule` array includes team IDs, matchup period, and score data.
+
+**Request:**
+```bash
+GET https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2025/segments/0/leagues/{leagueId}?view=mSchedule
+```
+
+**Response key:** `schedule` array (same structure as `mMatchupScore`, without live point data)
+
+**Difference from `mMatchupScore`:** `mSchedule` returns all matchups for the season without requiring a `matchupPeriodId` filter. Useful for rendering a full-season schedule view.
+
+---
+
+## View: `mStandings` — VERIFIED
+
+Returns team standings including overall record, divisional record, and points data. Used as part of the initial league fetch in the espn-api library alongside `mTeam`, `mRoster`, `mMatchup`, and `mSettings`.
+
+**Request:**
+```bash
+GET https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2025/segments/0/leagues/{leagueId}?view=mStandings
+```
+
+**Response key:** `teams[]` — each team includes:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | integer | Team ID |
+| `record.overall.wins` | integer | Total wins |
+| `record.overall.losses` | integer | Total losses |
+| `record.overall.ties` | integer | Total ties |
+| `record.overall.pointsFor` | float | Total points scored |
+| `record.overall.pointsAgainst` | float | Total points against |
+| `rankCalculatedFinal` | integer | Final standing rank |
+| `divisionStanding` | integer | Rank within division |
+
+> **Tip:** `mTeam` also includes standings data. Use `mStandings` when you only need the standings object and want a lighter response.
+
+---
+
+## View: `modular` — PARTIALLY VERIFIED
+
+A meta-view that can return various "module" blocks of data depending on the current application state. Primarily used by the ESPN Fantasy website itself for rendering dynamic page sections. The exact modules returned depend on the context and are not consistently documented.
+
+**Request:**
+```bash
+GET https://lm-api-reads.fantasy.espn.com/apis/v3/games/flb/seasons/2025/segments/0/leagues/{leagueId}?view=mPositionalRatings&view=mSettings&view=mTeam&view=modular&view=mNav
+```
+
+> **Note:** `modular` and `mNav` are typically used together by the Fantasy website. For programmatic access, prefer explicit views like `mTeam`, `mSettings`, and `mMatchupScore` rather than relying on `modular`.
+
+---
+
+## Complete View Reference
+
+| View | Primary Response Key | Auth Required | Notes |
+|------|---------------------|---------------|-------|
+| `mSettings` | `settings` | Public | Full league config |
+| `mTeam` | `teams[]` | Public | Teams + records + owners |
+| `mRoster` | `teams[].roster` | Public | Rosters for scoring period |
+| `mMatchupScore` | `schedule[]` | Public | Points per matchup |
+| `mMatchup` | `schedule[]` | Public | Alias for mMatchupScore |
+| `mBoxscore` | `schedule[]` | Public | Per-player scoring breakdown |
+| `mLiveScoring` | `schedule[]` | Public | Real-time live point totals |
+| `mScoreboard` | `schedule[]` | Public | Current period scoreboard |
+| `mSchedule` | `schedule[]` | Public | Full season schedule |
+| `mStandings` | `teams[]` | Public | Season standings/records |
+| `mStatus` | `status` | Public | Scoring period, season state |
+| `mDraftDetail` | `draftDetail` | Private* | Draft picks |
+| `mTransactions2` | `transactions[]` | Private* | Waiver/trade/FA activity |
+| `mPositionalRatings` | `positionAgainstOpponent` | Public | Defensive SOS ratings |
+| `kona_player_info` | `players[]` | Public | Filtered player pool |
+| `kona_playercard` | `players[]` | Public | Per-player deep stats |
+| `kona_league_messageboard` | `topics` | Private* | League message board |
+| `players_wl` | array | Public | All active pro players |
+| `proTeamSchedules_wl` | `proTeamSchedules` | Public | Pro team schedules |
+| `modular` | varies | Public | ESPN website modules |
+| `mNav` | varies | Public | Website nav state |
+
+*Private: Requires `espn_s2` and `SWID` cookies for private leagues or historical data

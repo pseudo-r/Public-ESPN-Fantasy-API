@@ -2,7 +2,32 @@
 
 All notable documentation changes to this project are recorded here.
 
+## [1.2.0] — 2026-03-26
+
+### Documentation — Internet-wide verification pass
+
+#### Cross-verified against
+- `cwendt94/espn-api` library source code (espn_requests.py, base_league.py, league.py)
+- Community sources (ffverse, thomaswildetech.com, onyxmueller.net, Reddit r/fantasyfootball)
+
+#### New views added to `docs/leagues.md`
+- `mLiveScoring` — real-time live scoring during active scoring periods; use with `mBoxscore` + `mScoreboard`
+- `mSchedule` — full season schedule for all teams (no `matchupPeriodId` required)
+- `mStandings` — season standings, records, and point totals (lighter alternative to `mTeam`)
+- `modular` + `mNav` — ESPN website meta-views; documented with practical caveat for programmatic use
+
+#### Complete View Reference table added
+- Added a 21-row reference table at the bottom of `docs/leagues.md` mapping every known view to its primary response key, auth requirement, and description
+
+#### Verification corrections
+- Confirmed `players_wl` spelling (not `player_wl`) via source code
+- Confirmed `mStandings` is used alongside `mTeam`, `mRoster`, `mMatchup`, `mSettings` in the espn-api initial league fetch
+- Confirmed `proTeamSchedules_wl` view is used for pro team bye-week calculation
+
+---
+
 ## [1.1.0] — 2026-03-26
+
 
 ### Documentation Expansion
 
