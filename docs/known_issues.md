@@ -34,6 +34,43 @@ ESPN migrated from a v2 to v3 API, breaking all existing clients. The URL base c
 
 ---
 
+## Live API Version Test Results — 2026-03-26
+
+The following results were captured from real browser HTTP requests against the ESPN Fantasy API to determine which API versions and domains are currently functional.
+
+**Test league used:** FLB league 101 (public, season 2025)
+
+| # | URL | Status | Result |
+|---|-----|--------|--------|
+| 1 | `https://lm-api-reads.fantasy.espn.com/apis/v3/games/flb/seasons/2025/segments/0/leagues/101?view=mSettings` | **200 OK** | ✅ JSON response — keys: `draftDetail`, `gameId`, `id`, `scoringPeriodId`, `seasonId`, `settings`, `status`, `teams` |
+| 2 | `https://fantasy.espn.com/apis/v3/games/flb/seasons/2025/segments/0/leagues/101?view=mSettings` | **HTML Redirect** | ❌ Redirects to `/baseball/welcome` page — API not accessible via direct browser on this domain |
+| 3 | `https://fantasy.espn.com/apis/v2/games/flb/seasons/2025/segments/0/leagues/101?view=mSettings` | **HTML Redirect** | ❌ Redirects to `/baseball/welcome` — v2 is dead |
+| 4 | `https://fantasy.espn.com/apis/v1/games/flb/seasons/2025/segments/0/leagues/101?view=mSettings` | **HTML Redirect** | ❌ Redirects to `/baseball/welcome` — v1 is dead |
+| 5 | `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2025/segments/0/leagues/336358?view=mSettings` | **401 Unauthorized** | ⚠️ JSON: "You are not authorized to view this League." — private league, cookies required |
+| 6 | `https://lm-api-reads.fantasy.espn.com/apis/v3/games/fba/seasons/2025/segments/0/leagues/101?view=mSettings` | **404 Not Found** | ⚠️ League 101 does not exist for FBA season 2025 |
+
+### Conclusions
+
+> **v1 and v2 are completely dead.** They return HTML redirects regardless of headers.
+
+> **v3 on `fantasy.espn.com`** also returns HTML redirects when accessed directly from a browser or simple HTTP client. It requires spoofed browser headers to get JSON, and is still unreliable.
+
+> **v3 on `lm-api-reads.fantasy.espn.com`** is the only endpoint that reliably returns JSON without header tricks. **Always use this domain.**
+
+### Summary
+
+| API Version | Domain | Status |
+|-------------|--------|--------|
+| v1 | `fantasy.espn.com` | ❌ DEAD — HTML redirect |
+| v2 | `fantasy.espn.com` | ❌ DEAD — HTML redirect |
+| v3 | `fantasy.espn.com` | ⚠️ UNRELIABLE — HTML redirect without browser headers |
+| v3 | `lm-api-reads.fantasy.espn.com` | ✅ ACTIVE — Returns JSON reliably |
+
+The only version to use: **`/apis/v3/` on `lm-api-reads.fantasy.espn.com`**
+
+---
+
+
 ## Known Endpoint Instabilities
 
 ### `fantasy.espn.com` vs `lm-api-reads.fantasy.espn.com`
