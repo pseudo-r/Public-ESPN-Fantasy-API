@@ -49,8 +49,9 @@ Every contribution helps keep this project updated as ESPN changes their API.
 
 ESPN operates an undocumented internal API that powers `fantasy.espn.com` and the ESPN Fantasy mobile apps across all four fantasy sports.
 
-**Verified base domain:** `https://fantasy.espn.com`  
-**Also observed:** `https://lm-api-reads.fantasy.espn.com` (internal read API; same interface, browser-accessible)
+**✅ Active API domain:** `https://lm-api-reads.fantasy.espn.com`  
+**❌ v1, v2:** Dead — return HTML redirect regardless of headers  
+**⚠️ v3 on `fantasy.espn.com`:** Unreliable — redirects to HTML without spoofed browser headers
 
 **All endpoints are REST-style GET requests returning JSON. No official SDK or documentation exists.**
 
@@ -65,14 +66,22 @@ ESPN operates an undocumented internal API that powers `fantasy.espn.com` and th
 
 ## Base URLs
 
-| Domain | Purpose | Notes |
-|--------|---------|-------|
-| `https://fantasy.espn.com` | Primary public-facing domain | May redirect non-browser clients to HTML |
-| `https://lm-api-reads.fantasy.espn.com` | Internal read API (same endpoints/schema) | Preferred for programmatic access since April 2024 |
+> [!IMPORTANT]
+> **Only one domain/version combination is functional.** This was verified by live HTTP tests on 2026-03-26.
 
-> **April 2024 change:** ESPN began routing internal fantasy traffic through `lm-api-reads.fantasy.espn.com`. Both domains work, but direct tool/script access to `fantasy.espn.com` may occasionally receive HTML redirects instead of JSON. Use `lm-api-reads` for non-browser clients.
+| API Version | Domain | Status | Notes |
+|-------------|--------|--------|-------|
+| v1 | `fantasy.espn.com` | ❌ **DEAD** | Redirects to HTML welcome page |
+| v2 | `fantasy.espn.com` | ❌ **DEAD** | Redirects to HTML welcome page |
+| v3 | `fantasy.espn.com` | ⚠️ **UNRELIABLE** | Redirects to HTML without browser-spoofed headers |
+| **v3** | **`lm-api-reads.fantasy.espn.com`** | ✅ **ACTIVE** | Returns JSON reliably — **use this** |
 
-All documented endpoints below use `https://fantasy.espn.com` as the root.
+**Always use:**
+```
+https://lm-api-reads.fantasy.espn.com/apis/v3/games/{gameCode}/seasons/{seasonId}/segments/0/leagues/{leagueId}
+```
+
+See [docs/known_issues.md](docs/known_issues.md) for the full live test results.
 
 ---
 
@@ -80,19 +89,23 @@ All documented endpoints below use `https://fantasy.espn.com` as the root.
 
 ```bash
 # Fantasy Baseball — public league settings (league 101, season 2025)
-curl "https://fantasy.espn.com/apis/v3/games/flb/seasons/2025/segments/0/leagues/101?view=mSettings"
+curl "https://lm-api-reads.fantasy.espn.com/apis/v3/games/flb/seasons/2025/segments/0/leagues/101?view=mSettings"
 
 # Fantasy Baseball — public league teams
-curl "https://fantasy.espn.com/apis/v3/games/flb/seasons/2025/segments/0/leagues/101?view=mTeam"
+curl "https://lm-api-reads.fantasy.espn.com/apis/v3/games/flb/seasons/2025/segments/0/leagues/101?view=mTeam"
 
 # Fantasy Baseball — draft detail
-curl "https://fantasy.espn.com/apis/v3/games/flb/seasons/2025/segments/0/leagues/101?view=mDraftDetail"
+curl "https://lm-api-reads.fantasy.espn.com/apis/v3/games/flb/seasons/2025/segments/0/leagues/101?view=mDraftDetail"
+
+# Football — private league (requires cookies)
+curl "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2025/segments/0/leagues/{leagueId}?view=mSettings" \
+  --cookie "espn_s2=YOUR_ESPN_S2; SWID=YOUR_SWID"
 
 # Game metadata — all sports
-curl "https://fantasy.espn.com/apis/v3/games/ffl"
-curl "https://fantasy.espn.com/apis/v3/games/fba"
-curl "https://fantasy.espn.com/apis/v3/games/flb"
-curl "https://fantasy.espn.com/apis/v3/games/fhl"
+curl "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl"
+curl "https://lm-api-reads.fantasy.espn.com/apis/v3/games/fba"
+curl "https://lm-api-reads.fantasy.espn.com/apis/v3/games/flb"
+curl "https://lm-api-reads.fantasy.espn.com/apis/v3/games/fhl"
 ```
 
 ---
@@ -195,28 +208,33 @@ All data is provided via the `view` query parameter. Multiple views can be reque
 
 | View | Description | Key Response Fields | Status |
 |------|-------------|---------------------|--------|
-| `mSettings` | League configuration, scoring rules, roster slots, draft settings | `settings` | VERIFIED |
-| `mTeam` | All teams with names, abbreviations, owners, records | `teams`, `members` | VERIFIED |
+| `mSettings` | League config, scoring rules, roster slots, draft settings | `settings` | VERIFIED |
+| `mTeam` | All teams: names, owners, records, division | `teams`, `members` | VERIFIED |
 | `mRoster` | All team rosters with player entries and lineup slots | `teams[].roster.entries` | VERIFIED |
 | `mMatchupScore` | Schedule and scores for a given matchup period | `schedule` | VERIFIED |
 | `mMatchup` | Older alias for matchup data (same as `mMatchupScore`) | `schedule` | VERIFIED |
-| `mScoreboard` | Scoreboard and current scoring period | `scoringPeriodId`, `schedule` | VERIFIED |
-| `mStandings` | Current standings (typically embedded in `schedule`) | `schedule` | VERIFIED |
+| `mScoreboard` | Scoreboard for current scoring period | `scoringPeriodId`, `schedule` | VERIFIED |
+| `mStandings` | Standings with W/L/T, pointsFor, pointsAgainst per team | `teams[].record` | VERIFIED |
+| `mSchedule` | Full season schedule for all teams, no period filter needed | `schedule` | VERIFIED |
+| `mBoxscore` | Per-player scoring breakdown for a matchup | `schedule[].home/away` | VERIFIED |
+| `mLiveScoring` | Real-time live scores during active periods; combine with mBoxscore | `schedule[]` | VERIFIED |
 | `mDraftDetail` | Full draft history (picks, player IDs, team IDs, order) | `draftDetail` | VERIFIED |
 | `mTransactions2` | All transactions: waivers, trades, free agent adds | `transactions` | VERIFIED |
 | `mStatus` | High-level league status (drafted, in playoffs, etc.) | `status` | VERIFIED |
-| `kona_player_info` | Player pool data: stats, ownership, projections, health | `players` | VERIFIED |
+| `kona_player_info` | Player pool: stats, ownership, projections, health status | `players` | VERIFIED |
 | `kona_playercard` | Deep per-player stats by player ID (needs `X-Fantasy-Filter`) | player entries | PARTIALLY VERIFIED |
-| `mBoxscore` | Per-player scoring breakdown for a matchup | `schedule[].home/away` | PARTIALLY VERIFIED |
 | `mPositionalRatings` | Defense vs. position rankings for start/sit decisions | `positionAgainstOpponent` | PARTIALLY VERIFIED |
-| `proTeamSchedules_wl` | NFL/NBA/MLB/NHL pro team schedule (for bye weeks) | `proTeamSchedules` | VERIFIED |
-| `mSchedule` | Full season schedule (all matchup periods) | `schedule` | PARTIALLY VERIFIED |
-| `kona_league_messageboard` | League message board threads (use `/communication` sub-path) | topics | PARTIALLY VERIFIED |
+| `proTeamSchedules_wl` | NFL/NBA/MLB/NHL pro team schedule (bye weeks) | `proTeamSchedules` | VERIFIED |
+| `kona_league_messageboard` | League message board (`/communication` sub-path) | topics | PARTIALLY VERIFIED |
+| `modular` | ESPN website meta-modules (not recommended for programmatic use) | varies | PARTIALLY VERIFIED |
 
-**Combined views example:**
+**Combined views example (recommended — reduces round trips):**
 ```bash
-# Get teams + rosters in one request (FFL, scoring period 1)
-curl "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2025/segments/0/leagues/{leagueId}?view=mTeam&view=mRoster&scoringPeriodId=1"
+# Teams + Rosters + Standings in one request (FFL, scoring period 1)
+curl "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2025/segments/0/leagues/{leagueId}?view=mTeam&view=mRoster&view=mStandings&scoringPeriodId=1"
+
+# Live scoring during an active week
+curl "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2025/segments/0/leagues/{leagueId}?view=mBoxscore&view=mLiveScoring&view=mScoreboard&scoringPeriodId=5"
 ```
 
 ### Historical Seasons Endpoint
@@ -253,7 +271,7 @@ GET https://lm-api-reads.fantasy.espn.com/apis/v3/games/{gameCode}/seasons/{seas
 Player pool data comes from `kona_player_info`. To filter for free agents or waivers, pass a JSON filter in the `X-Fantasy-Filter` request header:
 
 ```bash
-curl "https://fantasy.espn.com/apis/v3/games/ffl/seasons/2025/segments/0/leagues/{leagueId}?view=kona_player_info&scoringPeriodId=1" \
+curl "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2025/segments/0/leagues/{leagueId}?view=kona_player_info&scoringPeriodId=1" \
   -H 'X-Fantasy-Filter: {"players":{"filterStatus":{"value":["FREEAGENT","WAIVERS"]},"filterSlotIds":{"value":[0,2,4,6,17,16]},"limit":50,"sortPercOwned":{"sortPriority":1,"sortAsc":false}}}'
 ```
 
@@ -274,10 +292,10 @@ These endpoints do not require a league ID and are always public:
 
 ```bash
 # Game info (all fantasy sports)
-GET https://fantasy.espn.com/apis/v3/games/{gameCode}
+GET https://lm-api-reads.fantasy.espn.com/apis/v3/games/{gameCode}
 
 # Season info
-GET https://fantasy.espn.com/apis/v3/games/{gameCode}/seasons/{seasonId}
+GET https://lm-api-reads.fantasy.espn.com/apis/v3/games/{gameCode}/seasons/{seasonId}
 ```
 
 **Game info response (`/apis/v3/games/ffl`):**
@@ -319,4 +337,4 @@ GET https://fantasy.espn.com/apis/v3/games/{gameCode}/seasons/{seasonId}
 
 ---
 
-*Last Updated: March 2026 · 4 sports · 4 game codes · 17 views documented · 2 domains · Verified via live API inspection + community source analysis*
+*Last Updated: March 2026 · 4 sports · 4 game codes · 19 views documented · API version tested live (v1 dead, v2 dead, v3 on lm-api-reads ✅) · Verified via live browser HTTP tests + espn-api source analysis*
