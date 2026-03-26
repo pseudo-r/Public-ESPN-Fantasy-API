@@ -40,6 +40,7 @@ No additional query parameters are required. The full draft history is returned 
 | `roundId` | integer | Round number (1-based) |
 | `roundPickNumber` | integer | Pick number within the round |
 | `bidAmount` | integer | Auction bid amount (0 for snake drafts) |
+| `nominatingTeamId` | integer | Team ID that nominated the player for bid (auction only; absent in snake drafts) |
 | `autoDraftTypeId` | integer | `0` = manual pick, `1` = auto-drafted |
 | `tradeLocked` | boolean | Whether this player is trade-locked based on draft rules |
 | `keeper` | boolean | `true` if this player was a keeper (not a fresh pick) |

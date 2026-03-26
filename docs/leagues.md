@@ -518,3 +518,138 @@ An alias for scoreboard data. Returns the current scoring period and schedule da
 ```bash
 GET https://fantasy.espn.com/apis/v3/games/ffl/seasons/2025/segments/0/leagues/{leagueId}?view=mScoreboard
 ```
+
+---
+
+## View: `mMatchup`
+
+An older view name that returns matchup data. Functionally overlaps with `mMatchupScore`. Returns the `schedule` array including each matchup's team IDs, scores, and roster associations.
+
+> **Note:** Some community code uses `mMatchup` interchangeably with `mMatchupScore`. Both work, but `mMatchupScore` is the recommended name as of 2019+.
+
+**Request:**
+```bash
+GET https://fantasy.espn.com/apis/v3/games/ffl/seasons/2025/segments/0/leagues/{leagueId}?view=mMatchup&matchupPeriodId=1
+```
+
+---
+
+## View: `mPositionalRatings` — PARTIALLY VERIFIED
+
+Returns positional strength-of-schedule ratings by opponent. This shows how each team's defense ranks against each position, used for start/sit decisions.
+
+**Request:**
+```bash
+GET https://fantasy.espn.com/apis/v3/games/ffl/seasons/2025/segments/0/leagues/{leagueId}?view=mPositionalRatings&scoringPeriodId=1
+```
+
+**Response key:** `positionAgainstOpponent.positionalRatings`
+
+**`positionalRatings` structure:**
+```json
+{
+  "positionAgainstOpponent": {
+    "positionalRatings": {
+      "QB": {
+        "ratingsByOpponent": {
+          "1": { "rank": 3, "totalPointsAgainst": 312.5 },
+          "2": { "rank": 18, "totalPointsAgainst": 198.2 }
+        }
+      }
+    }
+  }
+}
+```
+
+Where the outer key is a position abbreviation and the `ratingsByOpponent` keys are Pro team IDs.
+
+---
+
+## View: `kona_playercard` — PARTIALLY VERIFIED
+
+Returns detailed player pool entry data for a specific set of player IDs. More focused than `kona_player_info` — used when you need deep stats for individual players.
+
+**Requires `X-Fantasy-Filter` header with `filterIds`.**
+
+**Request:**
+```bash
+curl "https://fantasy.espn.com/apis/v3/games/ffl/seasons/2025/segments/0/leagues/{leagueId}?view=kona_playercard" \
+  -H 'X-Fantasy-Filter: {"players":{"filterIds":{"value":[3054211,3895342]},"filterStatsForTopScoringPeriodIds":{"value":5,"additionalValue":["002025","102025"]}}}'
+```
+
+**`X-Fantasy-Filter` fields for `kona_playercard`:**
+
+| Filter field | Type | Description |
+|--------------|------|-------------|
+| `filterIds.value` | array[integer] | Player IDs to fetch |
+| `filterStatsForTopScoringPeriodIds.value` | integer | Number of top scoring periods to include |
+| `filterStatsForTopScoringPeriodIds.additionalValue` | array[string] | Season/type codes (e.g., `"002025"` = season 2025, type 0) |
+
+---
+
+## View: `kona_league_messageboard` — PARTIALLY VERIFIED
+
+Returns league message board threads. Uses a different sub-path and optionally filters by message type.
+
+**Sub-path:** `/communication` appended after the game code and season
+```
+GET https://lm-api-reads.fantasy.espn.com/apis/v3/games/{gameCode}/seasons/{seasonId}/segments/0/leagues/{leagueId}/communication?view=kona_league_messageboard
+```
+
+**Optionally filter by message type using `X-Fantasy-Filter`:**
+```json
+{
+  "topicsByType": {
+    "ACTIVITY_NOTIFICATIONS": {
+      "sortMessageDate": { "sortPriority": 1, "sortAsc": false }
+    }
+  }
+}
+```
+
+**Common message types:**
+
+| Value | Description |
+|-------|-------------|
+| `ACTIVITY_NOTIFICATIONS` | Transaction and activity notifications |
+| `CHAT` | League chat messages |
+| `TRADE_NOTIFICATIONS` | Trade offer notifications |
+| `WAIVER_NOTIFICATIONS` | Waiver claim notifications |
+
+---
+
+## Sub-Path Endpoints
+
+These endpoints use a different URL pattern from the main league endpoint.
+
+### Player List (`players_wl`)
+
+Returns all active professional players for a sport/season. Used to map player IDs to names.
+
+```
+GET https://lm-api-reads.fantasy.espn.com/apis/v3/games/{gameCode}/seasons/{seasonId}/players?view=players_wl
+```
+
+**Required header:**
+```json
+X-Fantasy-Filter: {"filterActive": {"value": true}}
+```
+
+**Response:** Array of player objects with `id` and `fullName`.
+
+```json
+[
+  { "id": 3054211, "fullName": "Patrick Mahomes", "proTeamId": 12 },
+  { "id": 3895342, "fullName": "Josh Allen", "proTeamId": 2 }
+]
+```
+
+### Player News
+
+Returns news articles for a specific player by ESPN player ID.
+
+```
+GET https://lm-api-reads.fantasy.espn.com/apis/v3/games/{gameCode}/news/players?playerId={playerId}
+```
+
+**Response:** Array of news items for the player (injury updates, news blurbs, beat reporter notes).

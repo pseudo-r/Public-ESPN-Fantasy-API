@@ -2,6 +2,31 @@
 
 All notable documentation changes to this project are recorded here.
 
+## [1.1.0] — 2026-03-26
+
+### Documentation Expansion
+
+#### New Documents
+- Added `docs/historical_seasons.md` — `leagueHistory` endpoint for pre-2018 seasons, hybrid fetch strategy, auth restriction as of August 2025
+- Added `docs/known_issues.md` — breaking change history (v2→v3, April 2024 domain switch, Aug 2025 auth restriction), instabilities, sport-specific gaps, undocumented behaviors
+- Added `docs/stat_ids.md` — numeric stat category ID reference for FFL, FLB, FBA, FHL
+
+#### Updated Documents
+- `docs/leagues.md` — Added 5 new views: `mMatchup`, `mPositionalRatings`, `kona_playercard`, `kona_league_messageboard`; added sub-path endpoints: `players_wl`, player news, message board
+- `docs/draft.md` — Added `nominatingTeamId` field (auction leagues only; discovered via source code)
+- `README.md` — Added `lm-api-reads` domain note, historical endpoint pattern, sub-path endpoints table, all new views with VERIFIED status labels
+
+#### New Endpoints Discovered (via web research + source code analysis)
+- `leagueHistory/{leagueId}?seasonId=` — pre-2018 historical data
+- `/seasons/{year}/players?view=players_wl` — all active pro players roster
+- `/news/players?playerId=` — player news
+- `/communication?view=kona_league_messageboard` — league message board
+- `kona_playercard` view — per-player deep stat cards
+- `mPositionalRatings` view — defensive positional ratings
+- `mMatchup` — confirmed as working alias for `mMatchupScore`
+
+---
+
 ## [1.0.0] — 2026-03-26
 
 ### Initial Release
