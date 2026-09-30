@@ -1,0 +1,30 @@
+[
+  {
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2026",
+    "checked_at": "2026-09-30T14:20:09.663142+00:00",
+    "status": 200,
+    "content_type": "application/json;charset=utf-8",
+    "top_level_keys": [
+      "abbrev",
+      "active",
+      "currentScoringPeriod",
+      "display",
+      "displayOrder",
+      "endDate",
+      "gameId",
+      "id",
+      "name",
+      "startDate"
+    ]
+  },
+  {
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2026?view=proTeamSchedules_wl",
+    "checked_at": "2026-09-30T14:20:10.034672+00:00",
+    "status": 200,
+    "content_type": "application/json;charset=utf-8",
+    "top_level_keys": [
+      "display",
+      "settings"
+    ]
+  }
+]

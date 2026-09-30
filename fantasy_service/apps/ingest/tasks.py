@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import structlog
-from celery import shared_task, chord, group
+from celery import group, shared_task
 
 from apps.ingest.services import (
     DraftIngestionService,
@@ -26,7 +26,7 @@ def sync_league(self, game_code: str, season_id: int, league_id: int) -> dict:  
         return result.to_dict()
     except Exception as exc:
         logger.warning("sync_league_retry", exc=str(exc), attempt=self.request.retries)
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=30)
@@ -43,7 +43,7 @@ def sync_roster(
         logger.info("sync_roster_done", **result.to_dict())
         return result.to_dict()
     except Exception as exc:
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=30)
@@ -62,7 +62,7 @@ def sync_matchups(
         logger.info("sync_matchups_done", **result.to_dict())
         return result.to_dict()
     except Exception as exc:
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=30)
@@ -73,7 +73,7 @@ def sync_draft(self, game_code: str, season_id: int, league_id: int) -> dict:  #
         logger.info("sync_draft_done", **result.to_dict())
         return result.to_dict()
     except Exception as exc:
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=30)
@@ -92,7 +92,7 @@ def sync_transactions(
         logger.info("sync_transactions_done", **result.to_dict())
         return result.to_dict()
     except Exception as exc:
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=30)
@@ -109,7 +109,7 @@ def sync_players(
         logger.info("sync_players_done", **result.to_dict())
         return result.to_dict()
     except Exception as exc:
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc
 
 
 @shared_task

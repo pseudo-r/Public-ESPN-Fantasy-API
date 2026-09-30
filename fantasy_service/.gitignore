@@ -39,7 +39,6 @@ htmlcov/
 .ruff_cache/
 
 # Docker
-.dockerignore
 
 # IDEs
 .vscode/

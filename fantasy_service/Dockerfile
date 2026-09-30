@@ -9,14 +9,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # Install Python deps first (cache layer)
-COPY pyproject.toml .
+COPY pyproject.toml README.md .
 RUN pip install --no-cache-dir -e ".[dev]"
 
 # Copy project
 COPY . .
 
-# Collect static
-RUN python manage.py collectstatic --noinput || true
+# Collect static during deployment with the configured runtime environment.
+RUN useradd -m appuser && chown -R appuser:appuser /app
+USER appuser
+ENV DJANGO_SETTINGS_MODULE=config.settings.production
 
 EXPOSE 8000
 

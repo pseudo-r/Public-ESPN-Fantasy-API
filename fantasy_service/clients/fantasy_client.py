@@ -79,6 +79,10 @@ class FantasyAPIError(Exception):
     """Raised when the ESPN Fantasy API returns an unexpected response."""
 
 
+class FantasyTransientError(FantasyAPIError):
+    """Retryable network or upstream server failure."""
+
+
 class FantasyAuthError(FantasyAPIError):
     """Raised on 401 — league is private or credentials are invalid."""
 
@@ -129,7 +133,7 @@ class FantasyClient:
             )
 
     @retry(
-        retry=retry_if_exception_type(FantasyAPIError),
+        retry=retry_if_exception_type(FantasyTransientError),
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=1, max=10),
         reraise=True,
@@ -157,7 +161,7 @@ class FantasyClient:
                     cookies=self._cookies(),
                 )
         except httpx.RequestError as exc:
-            raise FantasyAPIError(f"Network error fetching {url}: {exc}") from exc
+            raise FantasyTransientError(f"Network error fetching {url}: {exc}") from exc
 
         logger.debug("fantasy_api_response", url=url, status=r.status_code)
 
@@ -170,6 +174,8 @@ class FantasyClient:
         if r.status_code == 404:
             raise FantasyNotFoundError(f"404 Not Found: {url}")
 
+        if r.status_code >= 500:
+            raise FantasyTransientError(f"HTTP {r.status_code}: {url}")
         if r.status_code != 200:
             raise FantasyAPIError(f"ESPN Fantasy API returned HTTP {r.status_code} for {url}")
 
@@ -333,6 +339,15 @@ class FantasyClient:
         """
         url = f"{BASE_URL}/{game_code}"
         return self._get(url)
+
+
+    def get_season(self, game_code: str, season: int) -> FantasyResponse:
+        """Season metadata; does not require a league ID."""
+        return self._get(f"{BASE_URL}/{game_code}/seasons/{season}")
+
+    def get_pro_schedule(self, game_code: str, season: int) -> FantasyResponse:
+        """Professional team schedules for a fantasy season."""
+        return self._get(f"{BASE_URL}/{game_code}/seasons/{season}", params={"view": "proTeamSchedules_wl"})
 
 
 def get_fantasy_client() -> FantasyClient:

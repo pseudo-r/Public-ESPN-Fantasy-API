@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from django.conf import settings
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
+from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -11,7 +13,15 @@ from rest_framework.views import APIView
 from apps.ingest.tasks import sync_league_full, sync_players, sync_roster, sync_transactions
 
 
-class IngestLeagueView(APIView):
+class IngestionView(APIView):
+    """Staff-only ingestion; opt-out is intended for isolated tests only."""
+
+    def get_permissions(self):
+        permission = IsAdminUser if getattr(settings, "INGEST_REQUIRE_STAFF", True) else AllowAny
+        return [permission()]
+
+
+class IngestLeagueView(IngestionView):
     """Trigger a full league sync (settings, teams, draft, matchups, roster, players, transactions)."""
 
     @extend_schema(
@@ -46,7 +56,7 @@ class IngestLeagueView(APIView):
         )
 
 
-class IngestRosterView(APIView):
+class IngestRosterView(IngestionView):
     """Trigger roster ingestion for a specific scoring period."""
 
     @extend_schema(
@@ -70,7 +80,7 @@ class IngestRosterView(APIView):
         return Response({"task_id": task.id, "status": "dispatched"}, status=status.HTTP_202_ACCEPTED)
 
 
-class IngestPlayersView(APIView):
+class IngestPlayersView(IngestionView):
     """Trigger player pool ingestion."""
 
     @extend_schema(
@@ -94,7 +104,7 @@ class IngestPlayersView(APIView):
         return Response({"task_id": task.id, "status": "dispatched"}, status=status.HTTP_202_ACCEPTED)
 
 
-class IngestTransactionsView(APIView):
+class IngestTransactionsView(IngestionView):
     """Trigger transaction ingestion for a scoring period."""
 
     @extend_schema(

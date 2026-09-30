@@ -1,5 +1,7 @@
 # ESPN Fantasy API Documentation
 
+Service maintenance: [September 2026 audit, new routes, verification, and limitations](docs/audit-2026-09-30.md).
+
 **Disclaimer:** This is documentation for ESPN's undocumented internal Fantasy API. I am not affiliated with ESPN. Use responsibly and follow ESPN's terms of service.
 
 ---
