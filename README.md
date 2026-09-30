@@ -1,5 +1,7 @@
 # ESPN Fantasy API Documentation
 
+> **Unofficial project and usage scope:** This repository contains endpoint documentation and reference code. It is not affiliated with or endorsed by the upstream providers and does not offer a hosted API or data service. “Public” describes endpoint reachability, not permission to collect, reuse, or redistribute data. See [project scope and permitted use](PROJECT_SCOPE.md) before using the examples.
+
 Service maintenance: [September 2026 audit, new routes, verification, and limitations](docs/audit-2026-09-30.md).
 
 **Disclaimer:** This is documentation for ESPN's undocumented internal Fantasy API. I am not affiliated with ESPN. Use responsibly and follow ESPN's terms of service.
